@@ -1,61 +1,113 @@
-pragma solidity ^0.5.0;
+// SPDX-License-Identifier: UNLICENSED
+pragma solidity ^0.8.0;
 
-contract MyCoin {
+interface IERC20 {
+    function totalSupply() external view returns (uint256);
+
+    function balanceOf(address account) external view returns (uint256);
+
+    function transfer(
+        address recipient,
+        uint256 amount
+    ) external returns (bool);
+
+    function allowance(
+        address owner,
+        address spender
+    ) external view returns (uint256);
+
+    function approve(address spender, uint256 amount) external returns (bool);
+
+    function transferFrom(
+        address sender,
+        address recipient,
+        uint256 amount
+    ) external returns (bool);
+
+    event Transfer(address indexed from, address indexed to, uint256 value);
+
+    event Approval(
+        address indexed owner,
+        address indexed spender,
+        uint256 value
+    );
+}
+
+contract MyCoin is IERC20 {
+    address private owner;
     string public name;
     string public symbol;
     uint8 public decimals;
-    uint256 public totalSupply;
-    mapping(address => uint256) public balanceOf;
-    mapping(address => mapping(address => uint256)) public allowance;
+    mapping(address => uint256) private _balances;
+    mapping(address => mapping(address => uint256)) private _allowed;
+    uint256 private _totalSupply;
 
-    constructor() public {
-        name = "My Coin";
-        symbol = "MC";
-        decimals = 18;
-        totalSupply = 1000000 * (uint256(10) ** decimals);
-        balanceOf[msg.sender] = totalSupply;
+    constructor(
+        string memory name_,
+        string memory symbol_,
+        uint8 decimals_,
+        uint256 suply_
+    ) {
+        name = name_;
+        symbol = symbol_;
+        decimals = decimals_;
+        _totalSupply = suply_ * (uint256(10) ** decimals);
+        owner = msg.sender;
+        _balances[msg.sender] = _totalSupply;
     }
 
-    event Transfer(address indexed _from, address indexed _to, uint256 _value);
+    function totalSupply() public view override returns (uint256) {
+        return _totalSupply;
+    }
 
-    event Approval(
-        address indexed _owner,
-        address indexed _spender,
-        uint256 _value
-    );
+    function balanceOf(address _owner) public view override returns (uint256) {
+        return _balances[_owner];
+    }
+
+    function allowance(
+        address _owner,
+        address spender
+    ) public view override returns (uint256) {
+        return _allowed[_owner][spender];
+    }
 
     function transfer(
-        address _to,
-        uint256 _value
-    ) public returns (bool success) {
-        require(balanceOf[msg.sender] >= _value);
-        balanceOf[msg.sender] -= _value;
-        balanceOf[_to] += _value;
+        address to,
+        uint256 value
+    ) public override returns (bool) {
+        require(value <= _balances[msg.sender]);
+        require(to != address(0));
 
-        emit Transfer(msg.sender, _to, _value);
+        _balances[msg.sender] -= value;
+        _balances[to] += value;
+        emit Transfer(msg.sender, to, value);
         return true;
     }
 
     function approve(
-        address _spender,
-        uint256 _value
-    ) public returns (bool success) {
-        allowance[msg.sender][_spender] = _value;
-        emit Approval(msg.sender, _spender, _value);
+        address spender,
+        uint256 value
+    ) public override returns (bool) {
+        require(spender != address(0));
+
+        _allowed[msg.sender][spender] = value;
+        emit Approval(msg.sender, spender, value);
         return true;
     }
 
-    function tranferFrom(
-        address _from,
-        address _to,
-        uint256 _value
-    ) public returns (bool success) {
-        require(balanceOf[_from] >= _value);
-        require(allowance[_from][msg.sender] >= _value);
-        balanceOf[_from] -= _value;
-        balanceOf[_to] += _value;
-        allowance[_from][msg.sender] -= _value;
-        emit Transfer(_from, _to, _value);
+    function transferFrom(
+        address from,
+        address to,
+        uint256 value
+    ) public override returns (bool) {
+        require(value <= _balances[from]);
+        require(value <= _allowed[from][msg.sender]);
+        require(to != address(0));
+
+        _balances[from] -= value;
+        _balances[to] += value;
+        _allowed[from][msg.sender] -= value;
+        emit Transfer(from, to, value);
         return true;
     }
 }
